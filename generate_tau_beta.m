@@ -1,260 +1,288 @@
-function cfg =generate_tau_beta(cfg)
-if cfg.add_target
-    switch cfg.target_status
-        case "fixed"
-            T  = cfg.PRI;
-            k0 = cfg.Ntrain + 1;
+function cfg = generate_tau_beta(cfg)
+%GENERATE_TAU_BETA  Create target delay (tau) and Doppler scale (beta) per ping.
+%
+%   cfg = generate_tau_beta(cfg)
+%
+% Required cfg fields (used somewhere in this function):
+%   cfg.add_target (logical)
+%   cfg.target_status (string) : "fixed" | "moving" | "fixed_moving" | "moving_block"
+%   cfg.PRI (s), cfg.Ntrain, cfg.Np
+%   cfg.Tx_pos (2x1 or 1x2), cfg.Rx_pos (2x1 or 1x2)
+%   cfg.c (m/s)
+%
+% Outputs written into cfg (size Np x 1):
+%   cfg.tau_target
+%   cfg.beta_target
 
-            % allocate ping-wise outputs
-            cfg.tau_target  = NaN(cfg.Np,1);
-            cfg.beta_target = NaN(cfg.Np,1);
+if ~isfield(cfg,'add_target') || ~cfg.add_target
+    return;
+end
 
-            % initial state at ping k0
-            pT = [1500; 300];     % [2x1] position (m)
-            vT = [0; 0];          % [2x1] velocity (m/s)
+switch cfg.target_status
 
-            % accel std (m/s^2): set to 0 for constant velocity
-            sigma_a = 0;          % <-- change this as you like
+    %% ====================================================================
+    case "fixed"
+    % Stationary target (vT = 0) => constant tau/beta after arrival.
 
-            pTx = cfg.Tx_pos(:);
-            pRx = cfg.Rx_pos(:);
+        T  = cfg.PRI;
+        k0 = cfg.Ntrain + 1;
 
-            for k = k0:cfg.Np
+        cfg.tau_target  = NaN(cfg.Np, 1);
+        cfg.beta_target = NaN(cfg.Np, 1);
 
-                % random acceleration (2D)
-                aT = sigma_a * randn(2,1);
+        % initial state at ping k0
+        pT = [1500; 300];   % [m]
+        vT = [0; 0];        % [m/s]
 
-                % propagate
-                if k > k0
-                    pT = pT + vT*T + 0.5*aT*T^2;
-                    vT = vT + aT*T;
-                end
+        % accel std (m/s^2): set to 0 for constant velocity
+        sigma_a = 0;
 
-                % geometry
-                dTx = pT - pTx;
-                rTx = norm(dTx);
-                dRx = pT - pRx;
-                rRx = norm(dRx);
+        pTx = cfg.Tx_pos(:);
+        pRx = cfg.Rx_pos(:);
 
-                tau = (rTx + rRx) / cfg.c;
+        for k = k0:cfg.Np
 
-                uTx  = dTx / max(rTx, eps);
-                uRx  = dRx / max(rRx, eps);
-                Rdot = dot(uTx, vT) + dot(uRx, vT);
+            aT = sigma_a * randn(2,1);
 
-                beta = 1 - (Rdot / cfg.c);
-
-                cfg.tau_target(k)  = tau;
-                cfg.beta_target(k) = beta;
+            if k > k0
+                pT = pT + vT*T + 0.5*aT*T^2;
+                vT = vT + aT*T;
             end
 
-        case "moving"
-            T  = cfg.PRI;
-            k0 = cfg.Ntrain + 1;
+            dTx = pT - pTx;  rTx = norm(dTx);
+            dRx = pT - pRx;  rRx = norm(dRx);
 
-            cfg.tau_target  = NaN(cfg.Np,1);
-            cfg.beta_target = NaN(cfg.Np,1);
+            tau  = (rTx + rRx) / cfg.c;
 
-            % -------- YOUR DESIGN CHOICES --------
-            Kact = 60;                         % only first 60 pings after k0 are "active"
-            pT0  = [1500; 300];                % target position at ping k0 (arrival)
+            uTx  = dTx / max(rTx, eps);
+            uRx  = dRx / max(rRx, eps);
+            Rdot = dot(uTx, vT) + dot(uRx, vT);
 
-            kend = min(cfg.Np, k0 + Kact - 1);
+            beta = 1 - (Rdot / cfg.c);
 
-            % crossing at half of the active pings
-            % (for Kact=60 => half is 30 pings after start, so k_cross = k0+29)
-            k_cross = k0 + floor((Kact-1)/2);
+            cfg.tau_target(k)  = tau;
+            cfg.beta_target(k) = beta;
+        end
 
-            if k_cross < k0 || k_cross > kend
-                error('k_cross=%d must be within active window [%d,%d].', k_cross, k0, kend);
+    %% ====================================================================
+    case "moving"
+    % Target moves perpendicular to Tx-Rx baseline so it crosses the baseline
+    % at k_cross, then tau/beta are held constant after active window.
+
+        T  = cfg.PRI;
+        k0 = cfg.Ntrain + 1;
+
+        cfg.tau_target  = NaN(cfg.Np, 1);
+        cfg.beta_target = NaN(cfg.Np, 1);
+
+        % -------- DESIGN CHOICES --------
+        Kact = 60;              % active pings starting at k0
+        pT0  = [1500; 300];     % position at ping k0
+
+        kend    = min(cfg.Np, k0 + Kact - 1);
+        k_cross = k0 + floor((Kact - 1)/2);
+
+        if k_cross < k0 || k_cross > kend
+            error('k_cross=%d must be within active window [%d,%d].', k_cross, k0, kend);
+        end
+
+        pTx = cfg.Tx_pos(:);
+        pRx = cfg.Rx_pos(:);
+
+        % Baseline unit vectors
+        dTR = pRx - pTx;
+        D   = norm(dTR);
+        u   = dTR / max(D, eps);      % along baseline
+        v   = [-u(2); u(1)];          % perpendicular in 2D
+
+        % Perpendicular offset we want to drive to zero at k_cross
+        r0 = pT0(:) - pTx;
+        y0 = dot(r0, v);
+
+        % Velocity purely along v to hit y=0 at k_cross
+        t_to_cross = (k_cross - k0) * T;
+        if abs(y0) < 1e-12 || t_to_cross <= 0
+            vT = [0; 0];
+        else
+            vy_perp = -y0 / t_to_cross;
+            vT      = vy_perp * v;
+        end
+
+        pT = pT0(:);
+
+        % ---- Compute tau/beta over active window ----
+        for k = k0:kend
+
+            if k > k0
+                pT = pT + vT*T;
             end
 
-            pTx = cfg.Tx_pos(:);
-            pRx = cfg.Rx_pos(:);
+            dTx = pT - pTx;  rTx = norm(dTx);
+            dRx = pT - pRx;  rRx = norm(dRx);
 
-            % Baseline unit vectors
-            dTR = pRx - pTx;
-            D   = norm(dTR);
-            u   = dTR / max(D, eps);       % along baseline
-            v   = [-u(2); u(1)];           % perpendicular (2D)
+            tau  = (rTx + rRx) / cfg.c;
 
-            % Express pT0 in baseline coordinates
-            r0 = pT0(:) - pTx;
-            % x0 = dot(r0, u);               % along-baseline coordinate (constant in this model)
-            y0 = dot(r0, v);               % signed perpendicular offset (we drive this to 0)
+            uTx  = dTx / max(rTx, eps);
+            uRx  = dRx / max(rRx, eps);
+            Rdot = dot(uTx, vT) + dot(uRx, vT);
 
-            % Velocity: purely perpendicular so that y hits 0 at k_cross
-            t_to_cross = (k_cross - k0) * T;
-            if abs(y0) < 1e-12 || t_to_cross <= 0
-                vT = [0; 0];               % already on the line (or degenerate)
-            else
-                vy_perp = -y0 / t_to_cross; % m/s along v direction
-                vT      = vy_perp * v;      % 2x1 velocity vector
-            end
+            beta = 1 - (Rdot / cfg.c);
 
-            % Initialize at arrival ping
-            pT = pT0(:);
+            cfg.tau_target(k)  = tau;
+            cfg.beta_target(k) = beta;
+        end
 
-            % ---- Compute tau/beta ONLY over active window ----
-            for k = k0:kend
-                if k > k0
-                    pT = pT + vT*T;
-                end
-
-                dTx = pT - pTx;  rTx = norm(dTx);
-                dRx = pT - pRx;  rRx = norm(dRx);
-
-                tau = (rTx + rRx) / cfg.c;
-
-                uTx  = dTx / max(rTx, eps);
-                uRx  = dRx / max(rRx, eps);
-                Rdot = dot(uTx, vT) + dot(uRx, vT);
-
-                beta = 1 - (Rdot / cfg.c);
-
-                cfg.tau_target(k)  = tau;
-                cfg.beta_target(k) = beta;
-            end
-
-            % ---- Hold last tau/beta constant after active window ----
+        % ---- Hold last value constant after active window ----
+        if kend < cfg.Np
             cfg.tau_target(kend+1:cfg.Np)  = cfg.tau_target(kend);
             cfg.beta_target(kend+1:cfg.Np) = cfg.beta_target(kend);
+        end
 
+        % NOTE: cfg.tau_target(1:k0-1) remains NaN (by design).
 
-        case "fixed_moving"
-            T  = cfg.PRI; %#ok<NASGU>
-            k0 = cfg.Ntrain + 1;
+    %% ====================================================================
+    case "fixed_moving"
+    % Fixed position but enforce a nonzero bistatic range-rate by choosing vT
+    % aligned with (uTx + uRx). Tau is constant; beta constant.
 
-            % allocate ping-wise outputs
-            cfg.tau_target  = NaN(cfg.Np,1);
-            cfg.beta_target = NaN(cfg.Np,1);
+        k0 = cfg.Ntrain + 1;
 
-            % --- fixed target position (same as your moving start) ---
-            pT = [1500; 300];        % [2x1] position (m), fixed for all k>=k0
+        cfg.tau_target  = NaN(cfg.Np, 1);
+        cfg.beta_target = NaN(cfg.Np, 1);
 
-            % --- desired bistatic range-rate (m/s) ---
-            Rdot_des = 5;            % bistatic velocity / range-rate
+        pT = [1500; 300];     % fixed target position
 
-            pTx = cfg.Tx_pos(:);
-            pRx = cfg.Rx_pos(:);
+        % desired bistatic range-rate (m/s)
+        Rdot_des = 5;
 
-            % geometry at the fixed position
-            dTx = pT(:) - pTx;  rTx = norm(dTx);
-            dRx = pT(:) - pRx;  rRx = norm(dRx);
+        pTx = cfg.Tx_pos(:);
+        pRx = cfg.Rx_pos(:);
 
-            tau_const = (rTx + rRx) / cfg.c;
+        dTx = pT(:) - pTx;  rTx = norm(dTx);
+        dRx = pT(:) - pRx;  rRx = norm(dRx);
 
-            uTx = dTx / max(rTx, eps);
-            uRx = dRx / max(rRx, eps);
+        tau_const = (rTx + rRx) / cfg.c;
 
-            % Choose a velocity vector vT such that:
-            % Rdot = dot(uTx,vT) + dot(uRx,vT) = Rdot_des
-            s = uTx + uRx;                 % 2x1
-            denom = dot(s, s);             % ||s||^2
+        uTx = dTx / max(rTx, eps);
+        uRx = dRx / max(rRx, eps);
 
-            vT = (Rdot_des / denom) * s;
-            Rdot = dot(uTx, vT) + dot(uRx, vT);   % ~ Rdot_des
+        s     = uTx + uRx;          % direction that changes bistatic range
+        denom = dot(s, s);
 
+        % -------------------- IMPORTANT POTENTIAL ISSUE --------------------
+        % If denom ~ 0 (rare geometry where uTx ≈ -uRx), this divides by ~0.
+        % Your original code assumes denom > 0. We keep behavior but guard it.
+        % -------------------------------------------------------------------
+        if denom < 1e-12
+            error('Degenerate geometry: ||uTx+uRx||^2 is ~0, cannot set Rdot_des.');
+        end
 
-            beta_const = 1 - (Rdot / cfg.c);
+        vT   = (Rdot_des / denom) * s;
+        Rdot = dot(uTx, vT) + dot(uRx, vT);
 
-            % fill from arrival ping onward
-            cfg.tau_target(k0:cfg.Np)  = tau_const;
-            cfg.beta_target(k0:cfg.Np) = beta_const;
+        beta_const = 1 - (Rdot / cfg.c);
 
-        case "moving_block"
-            T  = cfg.PRI;
-            k0 = cfg.Ntrain + 1;
+        cfg.tau_target(k0:cfg.Np)  = tau_const;
+        cfg.beta_target(k0:cfg.Np) = beta_const;
 
-            cfg.tau_target  = NaN(cfg.Np,1);
-            cfg.beta_target = NaN(cfg.Np,1);
+        % NOTE: cfg.tau_target(1:k0-1) remains NaN (by design).
 
-            % -------- DESIGN CHOICES --------
-            Kact = 60;                 % only first 60 pings after k0 are "active"
-            Lb   = 15;                 % block length for piecewise-stationary tau/beta
-            pT0  = [1500; 300];        % target position at ping k0 (arrival)
+    %% ====================================================================
+    case "moving_block"
+    % Same as "moving" but quantize tau/beta into piecewise-constant blocks
+    % within the active window.
 
-            kend = min(cfg.Np, k0 + Kact - 1);
+        T  = cfg.PRI;
+        k0 = cfg.Ntrain + 1;
 
-            % crossing at half of the active pings (e.g., Ntrain=40 => k0=41 => k_cross=70)
-            k_cross = k0 + floor((Kact - 1)/2);
-            if k_cross < k0 || k_cross > kend
-                error('k_cross=%d must be within active window [%d,%d].', k_cross, k0, kend);
+        cfg.tau_target  = NaN(cfg.Np, 1);
+        cfg.beta_target = NaN(cfg.Np, 1);
+
+        % -------- DESIGN CHOICES --------
+        Kact = 60;              % active pings
+        Lb   = 15;              % block length (pings)
+        pT0  = [1500; 300];
+
+        kend    = min(cfg.Np, k0 + Kact - 1);
+        k_cross = k0 + floor((Kact - 1)/2);
+
+        if k_cross < k0 || k_cross > kend
+            error('k_cross=%d must be within active window [%d,%d].', k_cross, k0, kend);
+        end
+
+        pTx = cfg.Tx_pos(:);
+        pRx = cfg.Rx_pos(:);
+
+        dTR = pRx - pTx;
+        D   = norm(dTR);
+        u   = dTR / max(D, eps);
+        v   = [-u(2); u(1)];
+
+        r0 = pT0(:) - pTx;
+        y0 = dot(r0, v);
+
+        t_to_cross = (k_cross - k0) * T;
+        if abs(y0) < 1e-12 || t_to_cross <= 0
+            vT = [0; 0];
+        else
+            vy_perp = -y0 / t_to_cross;
+            vT      = vy_perp * v;
+        end
+
+        pT = pT0(:);
+
+        % ---- Continuous tau/beta over active window ----
+        for k = k0:kend
+
+            if k > k0
+                pT = pT + vT*T;
             end
 
-            % geometry anchors
-            pTx = cfg.Tx_pos(:);
-            pRx = cfg.Rx_pos(:);
+            dTx = pT - pTx;  rTx = norm(dTx);
+            dRx = pT - pRx;  rRx = norm(dRx);
 
-            % Baseline unit vectors (2D)
-            dTR = pRx - pTx;
-            D   = norm(dTR);
-            u   = dTR / max(D, eps);       % along baseline
-            v   = [-u(2); u(1)];           % perpendicular (2D)
+            tau  = (rTx + rRx) / cfg.c;
 
-            % Express pT0 in baseline coordinates
-            r0 = pT0(:) - pTx;
-            y0 = dot(r0, v);               % signed perpendicular offset (drive to 0)
+            uTx  = dTx / max(rTx, eps);
+            uRx  = dRx / max(rRx, eps);
+            Rdot = dot(uTx, vT) + dot(uRx, vT);
 
-            % Velocity: purely perpendicular so that y hits 0 at k_cross
-            t_to_cross = (k_cross - k0) * T;
-            if abs(y0) < 1e-12 || t_to_cross <= 0
-                vT = [0; 0];
-            else
-                vy_perp = -y0 / t_to_cross;  % m/s along v
-                vT      = vy_perp * v;       % 2x1 velocity vector
-            end
+            beta = 1 - (Rdot / cfg.c);
 
-            % Initialize at arrival ping
-            pT = pT0(:);
+            cfg.tau_target(k)  = tau;
+            cfg.beta_target(k) = beta;
+        end
 
-            % ---- Compute tau/beta ONLY over active window (continuous) ----
-            for k = k0:kend
-                if k > k0
-                    pT = pT + vT*T;   % constant velocity
-                end
+        % ---- Quantize tau/beta in blocks within the active window ----
+        idxAct   = k0:kend;
+        Kact_eff = numel(idxAct);
 
-                dTx = pT - pTx;  rTx = norm(dTx);
-                dRx = pT - pRx;  rRx = norm(dRx);
+        if Kact_eff < 1
+            error('Active window is empty: k0=%d, kend=%d', k0, kend);
+        end
 
-                tau = (rTx + rRx) / cfg.c;
+        for b0 = 1:Lb:Kact_eff
+            b1 = min(b0 + Lb - 1, Kact_eff);
+            kk = idxAct(b0:b1);
 
-                uTx  = dTx / max(rTx, eps);
-                uRx  = dRx / max(rRx, eps);
-                Rdot = dot(uTx, vT) + dot(uRx, vT);
+            % Representative = first ping in block
+            tau_rep  = cfg.tau_target(kk(1));
+            beta_rep = cfg.beta_target(kk(1));
 
-                beta = 1 - (Rdot / cfg.c);
+            cfg.tau_target(kk)  = tau_rep;
+            cfg.beta_target(kk) = beta_rep;
+        end
 
-                cfg.tau_target(k)  = tau;
-                cfg.beta_target(k) = beta;
-            end
-
-            % ---- Quantize tau/beta in 10-ping blocks within the 60 active pings ----
-            idxAct = k0:kend;
-            Kact_eff = numel(idxAct);
-            if Kact_eff < 1
-                error('Active window is empty: k0=%d, kend=%d', k0, kend);
-            end
-
-            for b0 = 1:Lb:Kact_eff
-                b1 = min(b0 + Lb - 1, Kact_eff);
-                kk = idxAct(b0:b1);
-
-                % Use FIRST ping in each block as representative (piecewise-stationary)
-                tau_rep  = cfg.tau_target(kk(1));
-                beta_rep = cfg.beta_target(kk(1));
-
-                cfg.tau_target(kk)  = tau_rep;
-                cfg.beta_target(kk) = beta_rep;
-            end
-
-            % ---- Hold last tau/beta constant after the active window ----
+        % ---- Hold last value constant after active window ----
+        if kend < cfg.Np
             cfg.tau_target(kend+1:cfg.Np)  = cfg.tau_target(kend);
             cfg.beta_target(kend+1:cfg.Np) = cfg.beta_target(kend);
+        end
 
+        % NOTE: cfg.tau_target(1:k0-1) remains NaN (by design).
 
-
-
-
-    end
+    %% ====================================================================
+    otherwise
+        error('Unknown cfg.target_status = "%s".', string(cfg.target_status));
+end
 end
