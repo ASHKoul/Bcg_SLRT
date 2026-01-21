@@ -8,10 +8,8 @@ The dataset is provided as a GitHub Release asset.
 
 Direct link (recommended):
 - Dataset release: https://github.com/YOURUSER/YOURREPO/releases/tag/YOURTAG
-- Asset (optional): https://github.com/YOURUSER/YOURREPO/releases/download/YOURTAG/DATASET_FILENAME.zip
 
 ## Unzip / Use
 ### Windows
 - Right click the `.zip` → **Extract All…**
-- Place the extracted folder here:
-  - `data/` (recommended), so paths match the scripts.
+- Place the extracted folder in the working directory.
