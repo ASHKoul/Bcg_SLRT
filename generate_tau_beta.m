@@ -1,18 +1,4 @@
 function cfg = generate_tau_beta(cfg)
-%GENERATE_TAU_BETA  Create target delay (tau) and Doppler scale (beta) per ping.
-%
-%   cfg = generate_tau_beta(cfg)
-%
-% Required cfg fields (used somewhere in this function):
-%   cfg.add_target (logical)
-%   cfg.target_status (string) : "fixed" | "moving" | "fixed_moving" | "moving_block"
-%   cfg.PRI (s), cfg.Ntrain, cfg.Np
-%   cfg.Tx_pos (2x1 or 1x2), cfg.Rx_pos (2x1 or 1x2)
-%   cfg.c (m/s)
-%
-% Outputs written into cfg (size Np x 1):
-%   cfg.tau_target
-%   cfg.beta_target
 
 if ~isfield(cfg,'add_target') || ~cfg.add_target
     return;
@@ -286,3 +272,4 @@ switch cfg.target_status
         error('Unknown cfg.target_status = "%s".', string(cfg.target_status));
 end
 end
+
