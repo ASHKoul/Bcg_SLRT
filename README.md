@@ -15,5 +15,7 @@ Direct link (recommended):
 - Place the extracted folder in the working directory.
 
 Usage:
-1. To compute the threshold, run the "Threshold computation for the SLRT" file.
-2. For computing the MDD and Probability fo detection plots, run " SLRT for:
+1. To compute the threshold, run the "Threshold_computation_for_the_SLRT_test.m".
+2. For computing the MDD and Probability of detection plots, run " SLRT_for_bellhop_data.m".
+3.  Configurations can be altered in the settings.m file
+   
