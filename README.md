@@ -9,7 +9,11 @@ The dataset is provided as a GitHub Release asset.
 Direct link (recommended):
 - Dataset release: [Multipath Background](https://github.com/ASHKoul/Bcg_SLRT/releases/tag/underwater_Background_multipath)
 
-## Unzip / Use
+## Unzip 
 ### Windows
 - Right click the `.zip` → **Extract All…**
 - Place the extracted folder in the working directory.
+
+Usage:
+1. To compute the threshold, run the "Threshold computation for the SLRT" file.
+2. For computing the MDD and Probability fo detection plots, run " SLRT for:
