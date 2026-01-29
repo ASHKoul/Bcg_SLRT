@@ -18,5 +18,5 @@ Direct link (recommended):
 1. To compute the threshold, run the "Threshold_computation_for_the_SLRT_test.m".
 2. For computing the MDD and Probability of detection plots, run " SLRT_for_bellhop_data.m".
 3.  Configurations can be altered in the settings.m file
-4.  To estimate the hyperparameters and the compute the NLL, run "CIR_bellhop_3papr_all_SNR_bayesopt.m"
+4.  To estimate the hyperparameters and the compute the NLL, run "CIR_bellhop_basis_3param_MLE_all_SNR_bayesian_optimization.m"
    
