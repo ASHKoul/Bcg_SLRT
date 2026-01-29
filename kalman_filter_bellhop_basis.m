@@ -73,7 +73,7 @@ for k = kStart:Np
             + cfg.sigma_c^2 * (Ua * Ua') ...
             + cfg.sigma_d^2 * ((U*a_pr)*(U*a_pr)');
     end
-   % Rk  = 0.5*(Rk + Rk');
+   Rk  = 0.5*(Rk + Rk');
 
     % ---- Innovation covariance ----
     Syy = H*P_pr*H' + Rk;
@@ -84,7 +84,7 @@ for k = kStart:Np
     [LS,p] = chol(Syy + jitter*eye(m,'like',Syy),'lower');
     while p ~= 0
         jitter = jitter*10;
-        [LS,~] = chol(Syy + jitter*eye(m,'like',Syy),'lower');
+        [LS,p] = chol(Syy + jitter*eye(m,'like',Syy),'lower');
     end
 
     Kgain = ((P_pr*H')/LS')/LS;
@@ -95,13 +95,12 @@ for k = kStart:Np
     theta_po = theta_pr + Kgain*innov;
     P_po = (I_K - Kgain*H)*P_pr*(I_K - Kgain*H)' + Kgain*Rk*Kgain';
     P_po = 0.5*(P_po + P_po');
-    %P_po     = 0.5*(P_po + P_po');
 
     % ---- NLL_k (complex CN) ----
     w = LS\innov;
     NISk = real(w'*w);
     logdetS = 2*sum(log(real(diag(LS))));
-    NLL_k = (NISk + logdetS + cfg.N*log(pi));
+    NLL_k = (NISk + logdetS + m*log(pi));
     LL_k    = -NLL_k;
     cumLL  = cumLL  + LL_k;
     cumNLL = cumNLL + NLL_k;
@@ -113,8 +112,8 @@ for k = kStart:Np
     % logdet_vec(k) = logdetS;
     % 
     % % ---- Save ----
-    filter_out.theta_hat(:,k)     = theta_po;
-    filter_out.P_theta_hat(:,:,k) = P_po;
+    % filter_out.theta_hat(:,k)     = theta_po;
+    % filter_out.P_theta_hat(:,:,k) = P_po;
     % filter_out.Ahat(:,k)          = B*theta_po;
     % filter_out.Phat(:,:,k)        = B*P_po*B';
     % filter_out.Yhat(:,k)          = H*theta_po;
