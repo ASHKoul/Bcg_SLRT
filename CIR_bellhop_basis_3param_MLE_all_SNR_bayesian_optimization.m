@@ -17,8 +17,8 @@ cfg.add_noise = true;
 SNR_list = 0:5:30;                     % SNR sweep [dB]
 
 %% ========================== DATA IMPORT ====================================
-data   = load("Bellhop_reverb_nojitter005_lfm_train_0025_012_20251111T225300.mat");
-cfgTxt = fileread('config_reverb_nojitter005_lfm_train_0025_012_20251111T225300.txt');
+data   = load("");
+cfgTxt = fileread('');
 
 cfg.fc            = str2double(regexp(cfgTxt,'fCarrier:\s*([\d.]+)','tokens','once'));
 cfg.waymarkPeriod = str2double(regexp(cfgTxt,'T_WAYMARK:\s*([\d.]+)','tokens','once'));
@@ -32,7 +32,7 @@ else
     cfg.tMin = cfg.max_range/cfg.c;
 end
 
-[s, cfg.Fs] = audioread("lfm_train_0025_012.wav");
+[s, cfg.Fs] = audioread("");
 
 cfg.Nlfm          = floor(cfg.Fs * cfg.Tp);
 cfg.L             = floor(cfg.max_delay * cfg.Fs);
@@ -174,4 +174,5 @@ out = kalman_filter_bellhop_basis(Y, S, U, B, kf_use);
 % Must return a scalar objective
 NLL = out.NLL;
 end
+
  
