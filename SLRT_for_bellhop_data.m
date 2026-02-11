@@ -7,7 +7,7 @@ clearvars;
 
 % Data
 data   = load("Bellhop_nojitter_reverb005_lfm_train_0025_012_20251111T180648.mat");
-N_op   = length(data.outputSignal); %#ok<NASGU>  % kept (not used later)
+N_op   = length(data.outputSignal); 
 
 % Configuration + waveform
 cfgTxt = fileread('config_nojitter_reverb005_lfm_train_0025_012_20251111T180648.txt');
@@ -36,11 +36,11 @@ for isnr = 1:length(cfg.SNRdB_list)
     cfg.add_target = false;
     cfg.add_noise  = true;
 
-    [Ydata, Atrue, S, U, ~, cfg_new] = data_preprocessing_withtarget(data, s, cfg); %#ok<ASGLU>
-    Ktest  = size(Ydata, 2); %#ok<NASGU>
+    [Ydata, Atrue, S, U, ~, cfg_new] = data_preprocessing_withtarget(data, s, cfg); 
+    Ktest  = size(Ydata, 2); 
 
     Ytrain  = Ydata(:, 1:cfg_new.Ntrain);
-    results = trainingdataopt(Ytrain, S, U, cfg_new); %#ok<NASGU>
+    results = trainingdataopt(Ytrain, S, U, cfg_new); 
 end
 
 %% ========================================================================
@@ -106,7 +106,7 @@ for m = 1:numel(models)
     Res(m).delay_mean = nan(1, Ns);
     Res(m).delay_med  = nan(1, Ns);
 
-    % post-change detection-time stats (tau_det = tau0 + delay_censored)
+    % post-change detection-time stats 
     Res(m).tau_mean = nan(1, Ns);
     Res(m).tau_med  = nan(1, Ns);
 
@@ -350,20 +350,6 @@ for m = 1:numel(Res)
     % Optional title:
     % title(sprintf('%s: Page statistic (run #1), SNR = %g dB', Res(m).name, sh.SNRdB));
 end
-
-%% (B) Mean detection delay vs SNR: E[tau_det - tau0]
-figure;
-hold on; grid on; box on;
-
-for m = 1:numel(Res)
-    delay_mean = Res(m).delay_mean;
-    plot(SNRv, delay_mean, 'LineWidth', 2);
-end
-
-xlabel('SNR [dB]');
-ylabel('Mean delay (pings) to detection');
-legend('$\mathcal{M}_0$', '$\mathcal{M}_{cd}$', '$\mathcal{M}_c$', '$\mathcal{M}_d$', ...
-    'Interpreter','latex');
 
 %% (D1) P_d vs SNR (by end of horizon)
 figure;

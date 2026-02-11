@@ -78,14 +78,13 @@ U = convmtx(u(:), cfg.L);
 
 
 
-%%
+%% Reshaping the full measurment vector into N x K (samples per ping x number of pings)
 cfg.tau_excess = cfg.tap_delays - cfg.tap_delays(1);
 Zpad_extra = 0.005;    % EXTRA zero-pad (e.g., 5 ms)
 % 3) Preallocate
-Ymat = zeros(cfg.N, cfg.Np, 'like', y); % preserve type (real/complex)
-
+Ymat = zeros(cfg.N, cfg.Np, 'like', y); % preserve type 
 % 4) Starting index for first ping (account for propagation delay)
-startIdx = floor((cfg.initial_delay-Zpad_extra)*cfg.Fs)+1;   % MATLAB 1-based indexing
+startIdx = floor((cfg.initial_delay-Zpad_extra)*cfg.Fs)+1;   % MATLAB 
 
 
 k_filled = 0;
@@ -100,7 +99,6 @@ for k = 1:cfg.Np
 end
 cfg.Np = k_filled;
 Ymat = Ymat(:,1:cfg.Np);    % trim
-% plot(abs(Ymat(:,1)))
 
 
 
@@ -160,102 +158,3 @@ cfg.tau_axis = (0:cfg.L-1).' / cfg.Fs + (cfg.initial_delay - Zpad_extra);
 
 
 
-%%
-% % ===================== A_true: frequency-domain views ======================
-% % CIR.A_true_clip is L x cfg.Np (delay x ping). FFT over delay -> H_true(f, ping)
-% Lfft = 2^nextpow2(size(A_true_clip,1));      % zero-pad for smoother curves
-% H_true = fftshift( fft(A_true_clip, Lfft, 1), 1 );   % [Lfft x cfg.Np], over delay axis
-% f_axis = ((-Lfft/2):(Lfft/2-1)).' * (cfg.Fs / Lfft);     % Hz (since Δτ = 1/Fs)
-% 
-% % ---- (1) Single representative ping (magnitude spectrum) ------------------
-% krep = min(2, cfg.Np);                           % pick 2nd ping if available
-% Hk   = H_true(:, krep);
-% HdB  = 20*log10( abs(Hk) / (max(abs(Hk))+eps) );
-% 
-% figure('Name','A_{true} frequency response (single ping)');
-% plot(f_axis/1e3, HdB, 'LineWidth', 1.3); grid on;
-% xlabel('Frequency (kHz)'); ylabel('Magnitude (dB, norm.)');
-% ttl = 'A_{true} |H(f)| (single ping)';
-% if isfield(cfg,'baseband') && cfg.baseband
-%     ttl = [ttl ' — baseband'];
-%     xline(0,'--k');
-% else
-%     ttl = [ttl ' — analytic passband'];
-%     if isfield(cfg,'fc'), xline(cfg.fc/1e3,'--k','f_{c}'); end
-% end
-% title(ttl); ylim([-80 1]);
-% 
-% % ---- (2) All pings as a waterfall (|H(f, k)| in dB) ----------------------
-% HdB_all = 20*log10( abs(H_true) + eps );
-% % Normalize per-figure (global) to highlight relative changes across pings:
-% HdB_all = HdB_all - max(HdB_all(:));
-% 
-% figure('Name','A_{true} frequency response (all pings)');
-% imagesc(cfg.t_ping, f_axis/1e3, HdB_all); axis xy; colormap(parula); colorbar;
-% xlabel('Ping time (s)'); ylabel('Frequency (kHz)');
-% title('|H_{true}(f,k)| in dB (global normalized)');
-% if isfield(cfg,'baseband') && cfg.baseband, xline(cfg.t_ping(1),'w-'); end
-% clim([-60 0]);    % show 60 dB dynamic range (adjust as you like)
-% 
-% % ---- (3) Optional: overlay baseband guard band (visual only) --------------
-% % If you know your signal bandwidth B (Hz), draw guide lines at ±B/2:
-% if isfield(cfg,'BW')
-%     figure(findobj('Name','A_{true} frequency response (single ping)'));
-%     hold on; xline(cfg.BW/2/1e3,'--r'); xline(-cfg.BW/2/1e3,'--r'); hold off;
-% 
-%     figure(findobj('Name','A_{true} frequency response (all pings)'));
-%     hold on; yline(cfg.BW/2/1e3,'--r'); yline(-cfg.BW/2/1e3,'--r'); hold off;
-% end
-% 
-% 
-% 
-% 
-% 
-% 
-% figure;
-% imagesc(cfg.tau_axis, cfg.t_ping, 20*log10(abs(A_true_clip)).');  % note transpose!
-% axis xy;  % ensure low ping index at bottom
-% colormap(parula); colorbar;
-% xlabel('Delay (s)'); ylabel('Ping time (s)');
-% title('|A_{true}| (Delay vs Slow-Time)');
-% clim([max(20*log10(abs(A_true_clip(:))))-60, ...
-%     max(20*log10(abs(A_true_clip(:))))]);
-% 
-% 
-% 
-% 
-% pspectrum(s,tp,"spectrogram",TimeResolution=0.01, ...
-%     OverlapPercent=99,Leakage=0.85)
-% 
-% Nfft = 2^nextpow2(max(numel(s), size(Ymat,1)));
-% 
-% % --- Tx spectrum ---
-% Sfft = fftshift(fft(s, Nfft));
-% fax  = cfg.Fs * (-0.5:1/Nfft:0.5-1/Nfft);   % Hz
-% 
-% % --- One representative Rx window (use the 2nd ping if available) ---
-% krep = min(2, cfg.Np);
-% yseg = Ymat(:, krep);
-% Yfft = fftshift(fft(yseg, Nfft));
-% 
-% % --- dB normalize to each max (for shape-only comparison) ---
-% SdB = 20*log10( abs(Sfft) / (max(abs(Sfft)) + eps) );
-% YdB = 20*log10( abs(Yfft) / (max(abs(Yfft)) + eps) );
-% 
-% figure('Name','Tx/Rx Spectra (Processed Domain)');
-% plot(fax/1e3, SdB, 'LineWidth', 1.3); hold on;
-% plot(fax/1e3, YdB, 'LineWidth', 1.3);
-% grid on; xlabel('Frequency (kHz)'); ylabel('Magnitude (dB, norm.)');
-% 
-% if isfield(cfg,'baseband') && cfg.baseband
-%     title('Analytic-Baseband: Spectra of Tx and representative Rx window');
-%     xline(0,'--k');   % expect energy centered near 0 Hz after basebanding
-% else
-%     title('Analytic Passband: Spectra of Tx and representative Rx window');
-%     if isfield(cfg,'fc')
-%         xline(cfg.fc/1e3,'--k','f_{c}','LabelHorizontalAlignment','left');
-%     end
-% end
-% legend({'Tx (processed)','Rx window (processed)'}, 'Location','best');
-% ylim([-100, 0])
-% 

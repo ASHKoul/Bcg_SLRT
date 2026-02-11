@@ -5,8 +5,7 @@ if ~isfield(cfg,'add_target') || ~cfg.add_target
 end
 
 switch cfg.target_status
-
-    %% ====================================================================
+  
     case "fixed"
     % Stationary target (vT = 0) => constant tau/beta after arrival.
 
@@ -50,7 +49,6 @@ switch cfg.target_status
             cfg.beta_target(k) = beta;
         end
 
-    %% ====================================================================
     case "moving"
     % Target moves perpendicular to Tx-Rx baseline so it crosses the baseline
     % at k_cross, then tau/beta are held constant after active window.
@@ -126,7 +124,6 @@ switch cfg.target_status
 
         % NOTE: cfg.tau_target(1:k0-1) remains NaN (by design).
 
-    %% ====================================================================
     case "fixed_moving"
     % Fixed position but enforce a nonzero bistatic range-rate by choosing vT
     % aligned with (uTx + uRx). Tau is constant; beta constant.
@@ -157,8 +154,7 @@ switch cfg.target_status
 
         % -------------------- IMPORTANT POTENTIAL ISSUE --------------------
         % If denom ~ 0 (rare geometry where uTx ≈ -uRx), this divides by ~0.
-        % Your original code assumes denom > 0. We keep behavior but guard it.
-        % -------------------------------------------------------------------
+
         if denom < 1e-12
             error('Degenerate geometry: ||uTx+uRx||^2 is ~0, cannot set Rdot_des.');
         end
@@ -173,10 +169,8 @@ switch cfg.target_status
 
         % NOTE: cfg.tau_target(1:k0-1) remains NaN (by design).
 
-    %% ====================================================================
     case "moving_block"
     % Same as "moving" but quantize tau/beta into piecewise-constant blocks
-    % within the active window.
 
         T  = cfg.PRI;
         k0 = cfg.Ntrain + 1;
@@ -186,7 +180,7 @@ switch cfg.target_status
 
         % -------- DESIGN CHOICES --------
         Kact = 60;              % active pings
-        Lb   = 15;              % block length (pings)
+        Lb   = 10;              % block length (pings)
         pT0  = [1500; 300];
 
         kend    = min(cfg.Np, k0 + Kact - 1);
