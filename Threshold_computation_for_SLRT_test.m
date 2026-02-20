@@ -6,9 +6,9 @@ clc;
 %  ========================================================================
 
 % ----------------------- data load -----------------------
-data   = load("Bellhop_reverb_nojitter005_lfm_train_0025_012_20251111T225300.mat");
-cfgTxt = fileread('config_reverb_nojitter005_lfm_train_0025_012_20251111T225300.txt');
-[s, Fs] = audioread("lfm_train_0025_012.wav");
+data   = load("");
+cfgTxt = fileread('');
+[s, Fs] = audioread("");
 
 % ------------------ Load configurations ------------------
 cfg = settings_data(cfgTxt, Fs);
