@@ -6,12 +6,12 @@ clearvars;
 %  ========================================================================
 
 % Data
-data   = load("Bellhop_nojitter_reverb005_lfm_train_0025_012_20251111T180648.mat");
+data   = load("");
 N_op   = length(data.outputSignal); 
 
 % Configuration + waveform
-cfgTxt = fileread('config_nojitter_reverb005_lfm_train_0025_012_20251111T180648.txt');
-[s, Fs] = audioread("lfm_train_0025_012.wav");
+cfgTxt = fileread('');
+[s, Fs] = audioread("");
 
 %% ========================================================================
 %  CONFIG
