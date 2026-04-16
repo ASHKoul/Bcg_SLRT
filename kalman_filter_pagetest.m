@@ -10,7 +10,7 @@ N   = cfg.N;
 Kb  = size(B,2);
 H   = S * B;               % [N x Kb]
 Np  = size(Yrun, 2);
-I_N = speye(N,'like',H);
+I_N = eye(N,'like',H);
 I_K = speye(Kb);
 % basic input checks (behavior unchanged)
 if size(Yrun,1) ~= N

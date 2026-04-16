@@ -6,7 +6,7 @@ N = cfg.N;
 K = size(B,2);
 H   = S*B;
 Np=size(Y,2);
-I_N = speye(N,'like',H);
+I_N = eye(N,'like',H);
 I_K = speye(K);
 
 
