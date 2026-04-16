@@ -4,11 +4,10 @@ function filter_out = kalman_filter_bellhop_basis(Y,S,U,B,cfg)
 L = cfg.L;
 N = cfg.N;
 K = size(B,2);
-I_N = speye(N);
-I_K = speye(K);
 H   = S*B;
 Np=size(Y,2);
-
+I_N = speye(N,'like',H);
+I_K = speye(K);
 
 
 
@@ -31,7 +30,7 @@ Q = (cfg.sigma_q^2) * I_K;
 lam0  = 1e-3;
 a0    = (S'*S + lam0*speye(cfg.L)) \ (S'*Y(:,1));
 theta_prev = (B'*B + 1e-8*speye(size(B,2))) \ (B'*a0);
-P_prev = 1e0 * I_K;
+P_prev = 1e0 * eye(K, 'like',H);
 
 % store ping-1 as initialized (not a proper likelihood update)
 % filter_out.theta_hat(:,1)    = theta_prev;

@@ -8,13 +8,10 @@ function run = kalman_filter_pagetest(Yrun, S, U, B, cfg, Stpl, h, mode)
 L   = cfg.L;
 N   = cfg.N;
 Kb  = size(B,2);
-
-I_N = speye(N);
-I_K = speye(Kb);
-
 H   = S * B;               % [N x Kb]
 Np  = size(Yrun, 2);
-
+I_N = speye(N,'like',H);
+I_K = speye(Kb);
 % basic input checks (behavior unchanged)
 if size(Yrun,1) ~= N
     error('Size mismatch: size(Yrun,1)=%d but cfg.N=%d', size(Yrun,1), N);
@@ -84,7 +81,7 @@ y0 = Yrun(:,1);
 a0 = (S'*S + lam0*speye(L)) \ (S' * y0);
 
 theta0_prev = (B'*B + 1e-8*speye(Kb)) \ (B' * a0);
-P0_prev     = 1e0 * I_K;
+P0_prev     = 1e0 * eye(Kb,'like',H);
 
 Tk = 0;
 needReinitBoth = false;
