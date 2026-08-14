@@ -10,32 +10,6 @@ The repository contains two main components:
 2. **Background-Aware Track-Before-Detect (TrBD)**
    A particle-based target tracking framework that operates directly on the measurement data while accounting for the time-varying multipath background.
 
----
-
-## Repository Structure
-
-The main files are summarized below.
-
-| File / Folder                                                  | Description                                                                                    |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `Threshold_computation_for_SLRT_test.m`                        | Computes the detection threshold used by the SLRT.                                             |
-| `SLRT_for_bellhop_data.m`                                      | Runs the SLRT on the BELLHOP-generated datasets and produces detection-performance results.    |
-| `CIR_bellhop_basis_3param_MLE_all_SNR_bayesian_optimization.m` | Estimates the multipath-model hyperparameters and evaluates the negative log-likelihood (NLL). |
-| `kalman_filter_bellhop_basis.m`                                | Performs recursive multipath-background tracking.                                              |
-| `data_preprocessing.m`                                         | Preprocesses background-only measurements.                                                     |
-| `data_preprocessing_withtarget.m`                              | Preprocesses measurements containing a target return.                                          |
-| `generate_tau_beta.m`                                          | Generates the delay/Doppler-related quantities used by the processing chain.                   |
-| `TrBD/`                                                        | Background-aware track-before-detect implementation.                                           |
-| `TrBD/main.m`                                                  | Main script for running the TrBD simulation and tracking framework.                            |
-| `TrBD/tbd_bis_active.m`                                        | Main TrBD/Bernoulli particle-filter implementation.                                            |
-| `TrBD/background_tracking.m`                                   | Tracks the time-varying multipath background.                                                  |
-| `TrBD/data_generation_synthetic.m`                             | Generates synthetic multipath-background realizations.                                         |
-| `TrBD/target_signal_genration.m`                               | Generates the target signal.                                                                   |
-| `TrBD/generate_received_signal_with_background.m`              | Combines the target signal with the multipath background and noise.                            |
-| `TrBD/get_settings.m`                                          | Main configuration file for the TrBD simulations.                                              |
-| `TrBD/settings_for_filter.m`                                   | Configures parameters required by the TrBD filter.                                             |
-
----
 
 # Dataset
 
