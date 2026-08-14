@@ -133,7 +133,7 @@ The time-varying multipath background is recursively tracked and incorporated in
 
 ## Running the TrBD Code
 
-### Step 1 — Enter the TrBD Folder
+###  Enter the TrBD Folder
 
 In MATLAB, change the current working directory to:
 
@@ -196,43 +196,6 @@ The script performs the complete simulation chain:
 7. Runs the background-aware TrBD filter for each Monte Carlo realization.
 8. Stores the resulting target-state estimates and target-existence probabilities.
 
----
-
-# TrBD Outputs
-
-After `main.m` completes, the principal results are stored in:
-
-```matlab
-trbd_filter_out
-```
-
-The estimated target states are available through:
-
-```matlab
-trbd_filter_out.x
-```
-
-and the posterior target-existence probabilities through:
-
-```matlab
-trbd_filter_out.q
-```
-
-For each Monte Carlo realization,
-
-```matlab
-trbd_filter_out.q{imc}
-```
-
-contains the evolution of the posterior target-existence probability.
-
-Similarly,
-
-```matlab
-trbd_filter_out.x{imc}
-```
-
-contains the corresponding target-state estimates.
 
 These outputs can subsequently be used to compute tracking-performance quantities such as target-confirmation probability, confirmation time, and localization error.
 
@@ -254,35 +217,7 @@ s.do_plot = false;
 
 to reduce computational overhead.
 
----
 
-# Recommended Workflow
-
-For reproducing the complete set of experiments, the suggested order is:
-
-```text
-1. Download and extract the dataset
-                |
-                v
-2. Estimate multipath hyperparameters
-                |
-                v
-3. Compute the SLRT threshold
-                |
-                v
-4. Run the SLRT detection experiment
-                |
-                v
-5. Configure the TrBD experiment
-                |
-                v
-6. Run TrBD/main.m
-                |
-                v
-7. Evaluate detection and tracking performance
-```
-
----
 
 # Notes
 
