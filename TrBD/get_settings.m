@@ -19,7 +19,7 @@ cfg.PFC = 1e-3;
 cfg.Nmc = 128; % Monte Carlo Simulations
 
 cfg.Fs = Fs;
-cfg.baseband = true;
+cfg.baseband = false;
 cfg.add_target = true;
 cfg.add_background = true;
 
