@@ -1,35 +1,39 @@
-function filter_out = kalman_filter_bellhop_basis(Y,S,U,B,cfg)
+function filter_out = kalman_filter_bellhop_basis(Y,S,U,B,cfg,precomp)
 
 % ==== Setup ====
-L = cfg.L;
 N = cfg.N;
 K = size(B,2);
-H   = S*B;
 Np=size(Y,2);
+
+if ~isreal(Y) || ~isreal(S) || ~isreal(U) || ~isreal(B)
+    error('Real-passband filtering requires real-valued data and model matrices.');
+end
+if nargin < 6 || isempty(precomp)
+    precomp.H = S * B;
+    precomp.LS = chol(S' * S + 1e-3 * speye(cfg.L), 'lower');
+    precomp.LB = chol(B' * B + 1e-8 * speye(K), 'lower');
+end
+H = precomp.H;
 I_N = eye(N,'like',H);
 I_K = speye(K);
 
+filter_out.Ahat = [];
+filter_out.Phat = [];
+filter_out.theta_hat = [];
+filter_out.P_theta_hat = [];
+filter_out.Yhat = [];
+filter_out.Syy = cell(1, Np);
+filter_out.NIS = zeros(1, Np);
+filter_out.NLL_k = zeros(1, Np);
 
-
-
-% Outputs
-filter_out.Ahat         = zeros(L, Np, 'like', Y);
-filter_out.Phat         = zeros(L, L,  Np, 'like', Y);
-filter_out.theta_hat    = zeros(K, Np, 'like', Y);
-filter_out.P_theta_hat  = zeros(K, K, Np, 'like', Y);
-filter_out.Yhat         = zeros(N, Np, 'like', Y);
-filter_out.Syy         = cell(1, Np);
-filter_out.NIS         = zeros(1, Np);
-filter_out.NLL_k       = zeros(1,Np);
 % Dynamics
 F = cfg.Fphi * I_K;
 Q = (cfg.sigma_q^2) * I_K;
 
 
 % ---- LS init (ping 1) ----
-lam0  = 1e-3;
-a0    = (S'*S + lam0*speye(cfg.L)) \ (S'*Y(:,1));
-theta_prev = (B'*B + 1e-8*speye(size(B,2))) \ (B'*a0);
+a0    = precomp.LS' \ (precomp.LS \ (S' * Y(:,1)));
+theta_prev = precomp.LB' \ (precomp.LB \ (B' * a0));
 P_prev = 1e0 * eye(K, 'like',H);
 
 % store ping-1 as initialized (not a proper likelihood update)
@@ -42,7 +46,6 @@ P_prev = 1e0 * eye(K, 'like',H);
 
 kStart = 2;
 
-cumLL  = 0;            % sum of log-likelihood (can be > 0)
 cumNLL = 0;            % sum of negative log-likelihood (can be < 0)
 % logdet_vec = zeros(1, Np);
 
@@ -95,13 +98,11 @@ for k = kStart:Np
     P_po = (I_K - Kgain*H)*P_pr*(I_K - Kgain*H)' + Kgain*Rk*Kgain';
     P_po = 0.5*(P_po + P_po');
 
-    % ---- NLL_k ----
+    % ---- Real Gaussian negative log-likelihood ----
     w = LS\innov;
     NISk = real(w'*w);
     logdetS = 2*sum(log(real(diag(LS))));
     NLL_k = 0.5 * (NISk + logdetS + m*log(2*pi));
-    LL_k    = -NLL_k;
-    cumLL  = cumLL  + LL_k;
     cumNLL = cumNLL + NLL_k;
 
 
@@ -124,8 +125,7 @@ end
 
 % ---- Summaries
 % filter_out.logdetSyy = logdet_vec(:);
-% filter_out.loglik_sum = cumLL;          % can be > 0 for complex data
-filter_out.NLL        = cumNLL;         % can be < 0 for complex data
+filter_out.NLL = cumNLL;
 
 
 

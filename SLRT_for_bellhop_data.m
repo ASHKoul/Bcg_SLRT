@@ -176,6 +176,9 @@ for isnr = 1:Ns
         % --- Build basis B
         tau = (0:kf.L-1)' / kf.Fs;
         [B, ~] = rbf_basis(tau, width_est, kf.overlap_frac, kf.Fs);
+        precomp.H = S * B;
+        precomp.LS = chol(S' * S + 1e-3 * speye(kf.L), 'lower');
+        precomp.LB = chol(B' * B + 1e-8 * speye(size(B, 2)), 'lower');
 
         %% ------------------ MC Page detection ------------------
         N   = size(Yuse, 1);
@@ -212,7 +215,7 @@ for isnr = 1:Ns
             Yrun = Yuse + E;
 
             % single-run function: returns .ell, .T, .det, .tau_det, .missed
-            run = kalman_filter_pagetest(Yrun, S, U, B, kf, Stpl, h, mode);
+            run = kalman_filter_pagetest(Yrun, S, U, B, kf, Stpl, h, mode, precomp);
 
             ell_all(nmc,:) = run.ell;
             T_all(nmc,:)   = run.T;

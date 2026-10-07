@@ -26,7 +26,12 @@ sigma_d0 = 1e-5;
 x0 = log([sigma_q0; sigma_c0; sigma_d0]);
 
 % objective handle
-objfun = @(x) nll_local(x, Y, S, U, cfg);
+tau = (0:cfg.L-1)' / cfg.Fs;
+[B, ~] = rbf_basis(tau, cfg.res_tau, cfg.overlap_frac, cfg.Fs);
+precomp.H = S * B;
+precomp.LS = chol(S' * S + 1e-3 * speye(cfg.L), 'lower');
+precomp.LB = chol(B' * B + 1e-8 * speye(size(B, 2)), 'lower');
+objfun = @(x) nll_local(x, Y, S, U, B, cfg, precomp);
 
 %% ========================================================================
 %  OPTIMIZATION
@@ -51,19 +56,12 @@ fprintf('Saved results to %s\n', savefile);
 %  NESTED: NLL OBJECTIVE
 %  ========================================================================
 
-function NLL = nll_local(x, Y, S, U, cfg)
+function NLL = nll_local(x, Y, S, U, B, cfg, precomp)
 
     % parameters (positive)
     sigma_q = exp(x(1));
     sigma_c = exp(x(2));
     sigma_d = exp(x(3));
-
-    % basis width is fixed here (not optimized)
-    width_bf = cfg.res_tau;
-
-    % build RBF basis
-    tau = (0:cfg.L-1)' / cfg.Fs;
-    [B, ~] = rbf_basis(tau, width_bf, cfg.overlap_frac, cfg.Fs);
 
     % KF config
     kf         = cfg;
@@ -73,7 +71,7 @@ function NLL = nll_local(x, Y, S, U, cfg)
     kf.sigma_e = cfg.sigma_e;
 
     % run filter and return scalar NLL
-    out = kalman_filter_bellhop_basis(Y, S, U, B, kf);
+    out = kalman_filter_bellhop_basis(Y, S, U, B, kf, precomp);
     NLL = out.NLL;
 end
 

@@ -1,4 +1,4 @@
-function run = kalman_filter_pagetest(Yrun, S, U, B, cfg, Stpl, h, mode)
+function run = kalman_filter_pagetest(Yrun, S, U, B, cfg, Stpl, h, mode, precomp)
 
 
 %% ========================================================================
@@ -8,17 +8,26 @@ function run = kalman_filter_pagetest(Yrun, S, U, B, cfg, Stpl, h, mode)
 L   = cfg.L;
 N   = cfg.N;
 Kb  = size(B,2);
-H   = S * B;               % [N x Kb]
 Np  = size(Yrun, 2);
-I_N = eye(N,'like',H);
 I_K = speye(Kb);
-% basic input checks (behavior unchanged)
+
 if size(Yrun,1) ~= N
     error('Size mismatch: size(Yrun,1)=%d but cfg.N=%d', size(Yrun,1), N);
+end
+if ~isreal(Yrun) || ~isreal(S) || ~isreal(U) || ~isreal(B)
+    error('Real-passband detection requires real-valued data and model matrices.');
 end
 if nargin < 8 || isempty(mode)
     mode = 2;
 end
+if nargin < 9 || isempty(precomp)
+    lam0 = 1e-3;
+    precomp.H = S * B;
+    precomp.LS = chol(S' * S + lam0 * speye(L), 'lower');
+    precomp.LB = chol(B' * B + 1e-8 * speye(Kb), 'lower');
+end
+H = precomp.H;
+I_N = eye(N,'like',H);
 
 %% ========================================================================
 %  PAGE-TEST ENABLE / TEMPLATE HANDLING
@@ -29,6 +38,9 @@ doPage = (nargin >= 6) && ~isempty(Stpl);
 if doPage
     if size(Stpl,1) ~= N
         error('Stpl must have %d rows (same as Yrun).', N);
+    end
+    if ~isreal(Stpl)
+        error('Real-passband detection requires a real-valued target template.');
     end
     if nargin < 7 || isempty(h)
         error('Threshold h must be provided when Stpl is provided.');
@@ -44,8 +56,6 @@ end
 
 F = cfg.Fphi * I_K;
 Q = (cfg.sigma_q^2) * I_K;
-
-lam0 = 1e-3;
 
 %% ========================================================================
 %  sigma_e HANDLING (scalar or length-Np vector)
@@ -78,9 +88,9 @@ missed  = true;
 
 % ---- H0 init (using y0) ----
 y0 = Yrun(:,1);
-a0 = (S'*S + lam0*speye(L)) \ (S' * y0);
+a0 = precomp.LS' \ (precomp.LS \ (S' * y0));
 
-theta0_prev = (B'*B + 1e-8*speye(Kb)) \ (B' * a0);
+theta0_prev = precomp.LB' \ (precomp.LB \ (B' * a0));
 P0_prev     = 1e0 * eye(Kb,'like',H);
 
 Tk = 0;
@@ -98,8 +108,8 @@ if doPage
 
     y1 = Yrun(:,1) - x1;
 
-    a1 = (S'*S + lam0*speye(L)) \ (S' * y1);
-    theta1_prev = (B'*B + 1e-8*speye(Kb)) \ (B' * a1);
+    a1 = precomp.LS' \ (precomp.LS \ (S' * y1));
+    theta1_prev = precomp.LB' \ (precomp.LB \ (B' * a1));
     P1_prev     = 1e0 * I_K;
 
     tpl_pos = 2;
@@ -120,8 +130,8 @@ for k = 2:Np
 
         % H0 reinit at ping k
         yk0 = Yrun(:,k);
-        a0  = (S'*S + lam0*speye(L)) \ (S' * yk0);
-        theta0_prev = (B'*B + 1e-8*speye(Kb)) \ (B' * a0);
+        a0  = precomp.LS' \ (precomp.LS \ (S' * yk0));
+        theta0_prev = precomp.LB' \ (precomp.LB \ (B' * a0));
         P0_prev     = 1e0 * I_K;
 
         % H1 reinit at ping k (subtract template)
@@ -133,8 +143,8 @@ for k = 2:Np
 
         yk1 = Yrun(:,k) - xk;
 
-        a1  = (S'*S + lam0*speye(L)) \ (S' * yk1);
-        theta1_prev = (B'*B + 1e-8*speye(Kb)) \ (B' * a1);
+        a1  = precomp.LS' \ (precomp.LS \ (S' * yk1));
+        theta1_prev = precomp.LB' \ (precomp.LB \ (B' * a1));
         P1_prev     = 1e0 * I_K;
 
         ell(k) = 0;

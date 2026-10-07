@@ -142,6 +142,9 @@ for isnr = 1:Ns
         % basis
         tau = (0:kf.L-1)' / kf.Fs;
         [B, ~] = rbf_basis(tau, width_est, kf.overlap_frac, kf.Fs);
+        precomp.H = S * B;
+        precomp.LS = chol(S' * S + 1e-3 * speye(kf.L), 'lower');
+        precomp.LB = chol(B' * B + 1e-8 * speye(size(B, 2)), 'lower');
 
         % maximum Page statistic samples under H0
         Gmax = zeros(Nmc, 1);
@@ -160,7 +163,7 @@ for isnr = 1:Ns
             Y0 = Y0_clean + E;
 
             % Run the SAME online detector logic (resets included)
-            run = kalman_filter_pagetest(Y0, S, U, B, kf, Stpl, hHuge, mode);
+            run = kalman_filter_pagetest(Y0, S, U, B, kf, Stpl, hHuge, mode, precomp);
 
             % Max Page statistic under H0
             Tk = run.T;

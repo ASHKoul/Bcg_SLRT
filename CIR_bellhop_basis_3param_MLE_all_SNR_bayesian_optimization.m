@@ -59,6 +59,9 @@ for ii = 1:numel(SNR_list)
     % --------- Build basis ----------
     tau = (0:cfg_new.L-1)'/cfg_new.Fs;
     [B, K] = rbf_basis(tau, cfg_new.res_tau, cfg_new.overlap_frac, cfg_new.Fs); 
+    precomp.H = S * B;
+    precomp.LS = chol(S' * S + 1e-3 * speye(cfg_new.L), 'lower');
+    precomp.LB = chol(B' * B + 1e-8 * speye(size(B, 2)), 'lower');
     % --------- Fix sigma_e from preprocessing; optimize sigma_q, sigma_c, sigma_d ----------
     kf = cfg_new;
     kf.sigma_e = cfg_new.sigma_e;     % FIXED 
@@ -103,7 +106,7 @@ for ii = 1:numel(SNR_list)
 
 
     % Objective handle
-    objFcn = @(T) nll_bayes(T, Y, S, U, B, kf);
+    objFcn = @(T) nll_bayes(T, Y, S, U, B, kf, precomp);
 
     % Run optimization
  results_bayes = bayesopt(objFcn, vars, ...
@@ -160,7 +163,7 @@ for ii = 1:numel(SNR_list)
 end
 
 %% ===================== OBJECTIVE FUNCTIONS =================================
-function NLL = nll_bayes(T, Y, S, U, B, kf)
+function NLL = nll_bayes(T, Y, S, U, B, kf, precomp)
 % T is a table row with fields: log_sigma_q, log_sigma_c, log_sigma_d
 
 kf_use         = kf;
@@ -168,7 +171,7 @@ kf_use.sigma_q = exp(T.log_sigma_q);
 kf_use.sigma_c = 0;%exp(T.log_sigma_c);
 kf_use.sigma_d = 0;%exp(T.log_sigma_d);
 
-out = kalman_filter_bellhop_basis(Y, S, U, B, kf_use);
+out = kalman_filter_bellhop_basis(Y, S, U, B, kf_use, precomp);
 
 % Must return a scalar objective
 NLL = out.NLL;
