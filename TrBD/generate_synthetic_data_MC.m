@@ -9,9 +9,9 @@ Ua = s.U * a; % N x Np
 
 y_clean = H * theta_true; % N x Np
 
-Ze = (randn(N, Np) + 1j*randn(N, Np)) / sqrt(2);
-Zc = (randn(size(a)) + 1j*randn(size(a))) / sqrt(2);
-Zd = (randn(1, Np) + 1j*randn(1, Np)) / sqrt(2);
+Ze = randn(N, Np);
+Zc = randn(size(a));
+Zd = randn(1, Np);
 
 ne = sqrt(s.s2e) * Ze;
 

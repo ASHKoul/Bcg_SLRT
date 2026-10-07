@@ -13,11 +13,11 @@ I_K = speye(K);
 
 
 % Outputs
-filter_out.Ahat         = complex(zeros(L, Np, 'like', Y));
-filter_out.Phat         = complex(zeros(L, L,  Np, 'like', Y));
-filter_out.theta_hat    = complex(zeros(K, Np, 'like', Y));
-filter_out.P_theta_hat  = complex(zeros(K, K,  Np, 'like', Y));
-filter_out.Yhat         = complex(zeros(N, Np, 'like', Y));
+filter_out.Ahat         = zeros(L, Np, 'like', Y);
+filter_out.Phat         = zeros(L, L,  Np, 'like', Y);
+filter_out.theta_hat    = zeros(K, Np, 'like', Y);
+filter_out.P_theta_hat  = zeros(K, K, Np, 'like', Y);
+filter_out.Yhat         = zeros(N, Np, 'like', Y);
 filter_out.Syy         = cell(1, Np);
 filter_out.NIS         = zeros(1, Np);
 filter_out.NLL_k       = zeros(1,Np);
@@ -95,11 +95,11 @@ for k = kStart:Np
     P_po = (I_K - Kgain*H)*P_pr*(I_K - Kgain*H)' + Kgain*Rk*Kgain';
     P_po = 0.5*(P_po + P_po');
 
-    % ---- NLL_k (complex CN) ----
+    % ---- NLL_k ----
     w = LS\innov;
     NISk = real(w'*w);
     logdetS = 2*sum(log(real(diag(LS))));
-    NLL_k = (NISk + logdetS + m*log(pi));
+    NLL_k = 0.5 * (NISk + logdetS + m*log(2*pi));
     LL_k    = -NLL_k;
     cumLL  = cumLL  + LL_k;
     cumNLL = cumNLL + NLL_k;

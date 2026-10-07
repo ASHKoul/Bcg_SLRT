@@ -148,7 +148,7 @@ for isnr = 1:Ns
 
         parfor nmc = 1:Nmc
 
-            Z = (randn(N, Np) + 1j*randn(N, Np)) / sqrt(2);
+            Z = randn(N, Np);
 
             % Simulate H0 noise realization
             if isscalar(sigma_true_use)

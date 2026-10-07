@@ -25,7 +25,8 @@ Q = cfg.sigma_q(irec)^2 * diag(1./(1:K).^2);
 % -----------------------------
 % LS init
 % -----------------------------
-theta_prev = pinv(H) * Y(:, 1);
+lambda = 1e-8 * norm(H, 'fro')^2 / K;
+theta_prev = (H' * H + lambda * I_K) \ (H' * Y(:, 1));
 P_prev = 3e1 * I_K;
 
 for k = 2:Np

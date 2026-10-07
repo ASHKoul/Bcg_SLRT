@@ -2,74 +2,34 @@ function [Yb, A_true_clip, s] = mult_background_processing(data, s)
 
 impresp = data.impulseRespRec; % [Nsamp x Nwm]
 delaycomp = data.delayCompRec(:).'; % [1 x Nwm]
-yb = hilbert(data.outputSignal(:));
-lfm = hilbert(s.lfm(:));
+yb = data.outputSignal(:);
+lfm = s.lfm(:);
 
 Fs0 = s.cfg.Fs;
-useBB = isfield(s.cfg, 'baseband') && s.cfg.baseband;
-
-% ------------------------------------------------------------
-% Optional complex baseband conversion
-% ------------------------------------------------------------
-if useBB
-    if ~isfield(s.cfg, 'fc') || isempty(s.cfg.fc)
-        error('s.cfg.fc must be provided when s.cfg.baseband == true.');
-    end
-
-    fc = s.cfg.fc;
-    ny = (0:numel(yb)-1).';
-    nlf = (0:numel(lfm)-1).';
-
-    yb = yb  .* exp(-1j*2*pi*fc*ny /Fs0);
-    lfm = lfm .* exp(-1j*2*pi*fc*nlf/Fs0);
-
-    s.cfg.signal_domain = 'analytic-baseband';
-else
-    s.cfg.signal_domain = 'analytic-passband';
+if ~isreal(yb) || ~isreal(lfm) || ~isreal(impresp)
+    error('Real-passband processing requires real outputSignal, lfm, and impulseRespRec data.');
 end
+s.cfg.signal_domain = 'real-passband';
 
 % ------------------------------------------------------------
 % True CIR from impulse responses, aligned across waymarks
 % ------------------------------------------------------------
-[Nsamp, Nwm] = size(impresp);
-f = (-floor(Nsamp/2):ceil(Nsamp/2)-1).' * (Fs0/Nsamp);
-
-Hc = fftshift(fft(impresp, [], 1), 1);
-Hc = Hc .* exp(-1j*2*pi*f*(delaycomp - delaycomp(1)));
-A_true = ifft(ifftshift(Hc, 1), [], 1); % [Nsamp x Nwm]
-
-if useBB
-    tau_imp = (0:Nsamp-1).' / Fs0;
-    A_true = A_true .* exp(-1j*2*pi*s.cfg.fc*tau_imp);
+[~, Nwm] = size(impresp);
+A_true = zeros(size(impresp), 'like', impresp);
+for m = 1:Nwm
+    dRel = delaycomp(m) - delaycomp(1);
+    A_true(:, m) = fractional_delay_real(impresp(:, m), dRel * Fs0);
 end
 
-% ------------------------------------------------------------
-% Resample to processing grid
-% ------------------------------------------------------------
-lfm_bb = lfm; % minimal fix: valid also when no resampling/basebanding
-
-if useBB
-    Fs_proc = 5000; % keep your current choice
-    [p, q] = rat(Fs_proc/Fs0, 1e-10);
-
-    if p ~= 1 || q ~= 1
-        yb = resample(yb, p, q);
-        lfm_bb = resample(lfm, p, q);
-        A_true = resample(A_true, p, q);
-    end
-
-    s.cfg.Fs_used = Fs0 * (p/q);
-else
-    s.cfg.Fs_used = Fs0;
-end
+s.cfg.Fs_used = Fs0;
 
 % ------------------------------------------------------------
 % Waveform / dimensions on processing grid
 % ------------------------------------------------------------
-s.lfm_bb = lfm_bb(:);
-s.t_lfm_bb = (0:numel(s.lfm_bb)-1).' / s.cfg.Fs_used;
+s.lfm_passband = lfm(:);
+s.t_lfm_passband = (0:numel(s.lfm_passband)-1).' / s.cfg.Fs_used;
 
-s.cfg.Nlfm = numel(s.lfm_bb);
+s.cfg.Nlfm = numel(s.lfm_passband);
 s.cfg.L = round(s.cfg.Trec * s.cfg.Fs_used);
 s.cfg.N = s.cfg.Nlfm + s.cfg.L - 1;
 
@@ -130,5 +90,32 @@ if r1 > size(A_true_pad, 1)
 end
 
 A_true_clip = A_true_pad(r0:r1, :);
+
+end
+
+function y = fractional_delay_real(x, delay_samples)
+
+N = numel(x);
+query = (0:N-1).' - delay_samples;
+idx0 = floor(query);
+offsets = -7:8;
+idx = idx0 + offsets;
+d = query - idx;
+
+window_arg = d / 8.5;
+window = 0.5 + 0.5*cos(pi*window_arg);
+window(abs(window_arg) >= 1) = 0;
+
+z = pi*d;
+sinc_weights = ones(size(z));
+nonzero = z ~= 0;
+sinc_weights(nonzero) = sin(z(nonzero)) ./ z(nonzero);
+weights = window .* sinc_weights;
+
+valid = idx >= 0 & idx < N;
+idx = min(max(idx, 0), N-1) + 1;
+samples = x(idx);
+samples(~valid) = 0;
+y = sum(weights .* samples, 2);
 
 end

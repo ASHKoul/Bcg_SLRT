@@ -187,7 +187,7 @@ for k = 2:Np
     w0       = LS0 \ innov0;
     NIS0     = real(w0' * w0);
     logdetS0 = 2 * sum(log(diag(LS0)));
-    NLL0     = (NIS0 + logdetS0 + cfg.N*log(pi));
+    NLL0     = 0.5 * (NIS0 + logdetS0 + cfg.N*log(2*pi));
 
     theta0_prev = theta0;
     P0_prev     = P0;
@@ -235,7 +235,7 @@ for k = 2:Np
         w1       = LS1 \ innov1;
         NIS1     = real(w1' * w1);
         logdetS1 = 2 * sum(log(diag(LS1)));
-        NLL1     = (NIS1 + logdetS1 + cfg.N*log(pi));
+        NLL1     = 0.5 * (NIS1 + logdetS1 + cfg.N*log(2*pi));
 
         theta1_prev = theta1;
         P1_prev     = P1;

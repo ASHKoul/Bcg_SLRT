@@ -54,7 +54,7 @@ for irec = 1:N_Rec
         theta_true{irec} = [];
 
         parfor inmc = 1:Nmc
-            Ytmp{inmc} = sqrt(0.5 * sigma_e2) * (randn(N, Np) + 1j * randn(N, Np));
+            Ytmp{inmc} = sqrt(sigma_e2) * randn(N, Np);
         end
 
     end

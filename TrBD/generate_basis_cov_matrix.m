@@ -13,7 +13,7 @@ tau_axis = s.cfg.tau_axis(:);
 % ---------------------------------------------------------
 % Waveform on processing grid
 % ---------------------------------------------------------
-sig = s.lfm_bb(:);
+sig = s.lfm_passband(:);
 if numel(sig) < Nlfm
     sig(end+1:Nlfm) = 0;
 else
@@ -92,7 +92,7 @@ D = tau_axis - mu.';
 B = exp(-0.5 * (abs(D) / sigma).^2);
 
 % Robust column normalization
-col_norm = sqrt(sum(abs(B).^2, 1));
+col_norm = sqrt(sum(B.^2, 1));
 B = B ./ col_norm;
 
 s.B = B;

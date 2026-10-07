@@ -11,7 +11,6 @@ cfg.max_range = 2000;                  % [m]
 cfg.max_delay = 90e-3;                 % [s]
 cfg.PRI       = 0.12;                  % [s]
 cfg.Fphi      = 0.999;                 % AR(1) factor
-cfg.baseband  = true;
 cfg.add_noise = true;
 
 SNR_list = 0:5:30;                     % SNR sweep [dB]

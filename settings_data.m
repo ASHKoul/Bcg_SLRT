@@ -26,7 +26,6 @@ cfg.Nmc = 10;        % Monte Carlo repetitions
 
 % --- signal handling ---
 cfg.Fs        = Fs;        % [Hz]
-cfg.baseband  = false;
 cfg.add_noise = true;
 cfg.add_target= true;
 cfg.target_status = "fixed";
@@ -65,6 +64,10 @@ cfg.Nlfm = floor(cfg.Fs * cfg.Tp);           % samples in one LFM pulse
 cfg.L    = floor(cfg.max_delay * cfg.Fs);    % samples in delay spread window
 cfg.N    = cfg.Nlfm + cfg.L;                 % total sample length per ping
 cfg.BW   = abs(cfg.f1 - cfg.f0);             % [Hz] bandwidth
+if cfg.Fs <= 2 * max(cfg.f0, cfg.f1)
+    error('Sampling rate %.6g Hz does not satisfy the real-passband Nyquist limit for the configured waveform.', cfg.Fs);
+end
+cfg.signal_domain = 'real-passband';
 
 % time axes
 cfg.t_ping      = (0:cfg.Np-1).' * cfg.PRI;                     % [s] ping times

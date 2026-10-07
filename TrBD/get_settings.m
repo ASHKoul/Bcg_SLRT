@@ -19,7 +19,6 @@ cfg.PFC = 1e-3;
 cfg.Nmc = 128; % Monte Carlo Simulations
 
 cfg.Fs = Fs;
-cfg.baseband = false;
 cfg.add_target = true;
 cfg.add_background = true;
 
@@ -43,6 +42,9 @@ cfg.trgt_eta = -10; % signal power at the target point
 
 % ---- Parse additional text parameters ---
 cfg.fc = str2double(regexp(cfgTxt, 'fCarrier:\s*([\d.]+)', 'tokens', 'once'));
+if ~isfinite(cfg.fc)
+    error('Could not read a finite fCarrier value from the configuration text.');
+end
 cfg.waymarkPeriod = str2double(regexp(cfgTxt, 'T_WAYMARK:\s*([\d.]+)', 'tokens', 'once'));
 cfg.Timp_min = str2double(regexp(cfgTxt, 'T_IMPULSE_MIN:\s*([\d.]+)', 'tokens', 'once'));
 tmp = regexp(cfgTxt, 'T_IMPULSE_NEG_START:\s*([\d.]+)', 'tokens', 'once');
@@ -60,6 +62,10 @@ cfg.L = floor( cfg.Trec* cfg.Fs);
 cfg.N = cfg.Nlfm + cfg.L-1;
 cfg.BW = abs(cfg.f1 - cfg.f0);
 cfg.mu = cfg.BW / cfg.Tp; % chirp rate
+if cfg.Fs <= 2 * (cfg.fc + cfg.BW/2)
+    error('Sampling rate %.6g Hz does not satisfy the real-passband Nyquist limit for the configured chirp.', cfg.Fs);
+end
+cfg.signal_domain = 'real-passband';
 
 cfg.t_ping = (0:cfg.Np-1).' * cfg.PRI;
 cfg.tau_axis = (0:cfg.L-1)'/cfg.Fs + cfg.initial_delay;
@@ -97,7 +103,7 @@ s.vy_region = [-5, 5]; % known downward motion
 s.tgt_eta_region = [-25, 5]; % allowed target amplitude for surviving particles
 s.tgt_eta_region_new_targets = [-25, 5]; % births (can widen a bit if needed)
 % --- Noise power (must match generator/likelihood) ---
-s.s2e = 1e-2; % E{|n|^2} per complex sample
+s.s2e = 1e-2; % noise variance per real sample
 
 s.birth_preselect = true; % resample newly generated particles using the likelihood
 
@@ -114,7 +120,8 @@ else
 end
 
 %% Plotting
-s.do_plot = true;
+s.do_plot = false;
+s.do_particle_diagnostics = false;
 s.cfg = cfg;
 
 end

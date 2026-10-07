@@ -9,7 +9,7 @@ s_new.cfg.sigma_e = sqrt(s_new.cfg.sigma_e2);
 
 s_new = rmfield(s_new, 'S');
 s_new = rmfield(s_new, 'lfm');
-s_new = rmfield(s_new, 'lfm_bb');
-s_new = rmfield(s_new, 't_lfm_bb');
+s_new = rmfield(s_new, 'lfm_passband');
+s_new = rmfield(s_new, 't_lfm_passband');
 
 end

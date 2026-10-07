@@ -21,11 +21,11 @@ end
 tp = beta * (t_rel - tau);
 mask = (tp >= 0) & (tp <= cfg.Tp);
 
-u = sym_chirp_bb_eval(tp, s);
+u = sym_chirp_passband(tp, s);
 u = u(:);
 u(~mask) = 0;
 
-Eu = sum(abs(u).^2);
+Eu = sum(u.^2);
 if ~(isfinite(Eu) && Eu > 0)
     return;
 end

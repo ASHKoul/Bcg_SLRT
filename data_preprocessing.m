@@ -4,66 +4,26 @@ impresp= data.impulseRespRec;
 delaycomp=data.delayCompRec;
 
 y=data.outputSignal;
-
-
-
-s = hilbert(s(:));                 
-y = hilbert(y(:));                 
-
-if isfield(cfg,'baseband') && cfg.baseband
-    if ~isfield(cfg,'fc')
-        error('cfg.fc (Hz) must be provided when cfg.baseband == true.');
-    end
-    ns = (0:numel(s)-1).';         % sample indices
-    ny = (0:numel(y)-1).';
-    s  = s .* exp(-1j*2*pi*cfg.fc * (ns/cfg.Fs));
-    y  = y .* exp(-1j*2*pi*cfg.fc * (ny/cfg.Fs));
-    cfg.signal_domain = 'analytic-baseband';
-else
-    cfg.signal_domain = 'analytic-passband';
+s = s(:);
+y = y(:);
+if ~isreal(s) || ~isreal(y) || ~isreal(impresp)
+    error('Real-passband processing requires real waveform, outputSignal, and impulseRespRec data.');
 end
+cfg.signal_domain = 'real-passband';
 
 Zpad_sim   = 0.1*cfg.Timp_min;   
 
 
 
-[Nsamp, Nwm] = size(impresp);
+[~, Nwm] = size(impresp);
 
-df = 1 / (Nsamp*1/cfg.Fs);
-f  = ((-floor(Nsamp/2)):(ceil(Nsamp/2)-1)).' * df;
-
-% Apply per-waymark *delay* Δ_m via phase ramp exp(-j 2π f Δ_m)
 dCompRef = delaycomp(1);
 A_true = zeros(size(impresp), 'like', impresp);
 for m = 1:Nwm
-    dRel = delaycomp(m) - dCompRef;                             % relative reverse compensation (s)
-    Hc   = fftshift(fft(impresp(:,m)));                         % center spectrum
-    Hc   = Hc .* exp(-1j*2*pi*f*dRel);                         % h(t - dRel)
-    A_true(:,m) = ifft(ifftshift(Hc));                        % back to time (complex)
+    dRel = delaycomp(m) - dCompRef;
+    A_true(:,m) = fractional_delay_real(impresp(:,m), dRel * cfg.Fs);
 end
 
-
-if isfield(cfg,'baseband') && cfg.baseband
-    if ~isfield(cfg,'fc'), error('cfg.fc must be set when cfg.baseband==true.'); end
-    tau_imp = (0:Nsamp-1).' / cfg.Fs;                        % delay samples (s)
-    phase_tau = exp(-1j*2*pi*cfg.fc * tau_imp);         % e^{-j 2π f_c τ}
-    A_true = phase_tau .* A_true;                        % broadcast over columns
-end
-
-
-
-%% downsampling
-if cfg.baseband
-    [p,q]=rat((cfg.Fs/2) /cfg.Fs , 1e-10);
-    s = resample(s, p, q);                 % complex-safe, anti-alias included
-    y = resample(y, p, q);
-    A_true = resample(A_true, p, q);   % resamples each column over rows (delay)
-    cfg.Fs     = cfg.Fs * (p/q);           % update to new Fs
-    cfg.Nlfm  = floor(cfg.Fs*cfg.Tp);      % # fast-time samples per ping
-    cfg.L  = floor(cfg.max_delay*cfg.Fs);% # delay taps
-    cfg.N  = cfg.Nlfm+cfg.L;      % # time samples per ping
-    cfg.tap_delays = cfg.initial_delay + (0:cfg.L-1)'/cfg.Fs;
-end
 %% ---------------------- LFM pulse & linearization ---------------------------
 tp=(0:cfg.Nlfm-1)'/cfg.Fs;
 s=s(1:length(tp));
@@ -94,6 +54,7 @@ for k = 1:cfg.Np
     if idxStart < 1 || idxEnd > length(y)
         break;
     end
+
     Ymat(:,k) = y(idxStart:idxEnd);
     k_filled = k_filled + 1;
 end
@@ -115,8 +76,7 @@ if cfg.add_noise
     % noise std per ping so that Ps/sigma^2 = 10^(SNR/10)
     sigma_e_col = sqrt(Ps_col ./ (10^(cfg.SNRdB/10))); % 1 x Np
 
-    % complex AWGN: CN(0, sigma^2) per sample
-    Z = (randn(size(Ymat)) + 1j*randn(size(Ymat))) / sqrt(2);
+    Z = randn(size(Ymat));
     E = Z .* repmat(sigma_e_col, size(Ymat,1), 1);
 
     Ymat = Ymat + E;
@@ -151,10 +111,32 @@ end
 A_true_clip = A_true_pad(r0:r1, :);           % L x cfg.Np, aligned with Ymat but with extra leading zeros
 cfg.tau_axis = (0:cfg.L-1).' / cfg.Fs + (cfg.initial_delay - Zpad_extra);
 
+end
 
+function y = fractional_delay_real(x, delay_samples)
 
+N = numel(x);
+query = (0:N-1).' - delay_samples;
+idx0 = floor(query);
+offsets = -7:8;
+idx = idx0 + offsets;
+d = query - idx;
 
+window_arg = d / 8.5;
+window = 0.5 + 0.5*cos(pi*window_arg);
+window(abs(window_arg) >= 1) = 0;
 
+z = pi*d;
+sinc_weights = ones(size(z));
+nonzero = z ~= 0;
+sinc_weights(nonzero) = sin(z(nonzero)) ./ z(nonzero);
+weights = window .* sinc_weights;
 
+valid = idx >= 0 & idx < N;
+idx = min(max(idx, 0), N-1) + 1;
+samples = x(idx);
+samples(~valid) = 0;
+y = sum(weights .* samples, 2);
 
+end
 

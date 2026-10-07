@@ -94,19 +94,21 @@ for kout = 1:Krun
     w = ones(1, settings.Ns) / settings.Ns;
 
     % Debug particle diagnostics (kept unchanged; currently always enabled)
-    figure(105)
-    subplot(311)
-    scatter(x(1, :), x(2, :));
-    xlabel('x')
-    ylabel('y')
-    title('posterior p(x/y) after resampling')
-    subplot(312)
-    scatter(xp(1, :), xp(2, :), 10+1e5*wp);
-    xlim([settings.x_region(1), settings.x_region(2)])
-    ylim([settings.y_region(1), settings.y_region(2)])
-    xlabel('x')
-    ylabel('y')
-    title('Posterior p(x_k/Y_k) with  their corresponding weights')
+    if settings.do_particle_diagnostics
+        figure(105)
+        subplot(311)
+        scatter(x(1, :), x(2, :));
+        xlabel('x')
+        ylabel('y')
+        title('posterior p(x/y) after resampling')
+        subplot(312)
+        scatter(xp(1, :), xp(2, :), 10+1e5*wp);
+        xlim([settings.x_region(1), settings.x_region(2)])
+        ylim([settings.y_region(1), settings.y_region(2)])
+        xlabel('x')
+        ylabel('y')
+        title('Posterior p(x_k/Y_k) with their corresponding weights')
+    end
 
     % Plot
     if do_plot && (tping(kout) - t_old) > 1
@@ -176,14 +178,16 @@ if isfield(settings, 'birth_preselect') && settings.birth_preselect
     if isfinite(sLt) && sLt > 0
         Lt = Lt / sLt;
         % Birth-particle diagnostic plot
-        figure(105)
-        subplot(313)
-        scatter(x(1, :), x(2, :), 10+1e5*Lt);
-        xlim([settings.x_region(1), settings.x_region(2)])
-        ylim([settings.y_region(1), settings.y_region(2)])
-        xlabel('x')
-        ylabel('y')
-        title('Birth Particles with the Likeihoods as the weights')
+        if settings.do_particle_diagnostics
+            figure(105)
+            subplot(313)
+            scatter(x(1, :), x(2, :), 10+1e5*Lt);
+            xlim([settings.x_region(1), settings.x_region(2)])
+            ylim([settings.y_region(1), settings.y_region(2)])
+            xlabel('x')
+            ylabel('y')
+            title('Birth particles weighted by likelihood')
+        end
 
         ind = sysresample(Lt, Np);
         x = x(:, ind);
@@ -286,11 +290,11 @@ if ~isempty(idx)
         tp1 = beta1_g .* (t_rel - tau_rel_1_g);
         tp2 = beta2_g .* (t_rel - tau_rel_2_g);
 
-        U1 = sym_chirp_bb_eval(tp1, settings);
-        U2 = sym_chirp_bb_eval(tp2, settings);
+        U1 = sym_chirp_passband(tp1, settings);
+        U2 = sym_chirp_passband(tp2, settings);
 
-        E1 = sum(abs(U1).^2, 1);
-        E2 = sum(abs(U2).^2, 1);
+        E1 = sum(U1.^2, 1);
+        E2 = sum(U2.^2, 1);
 
         % Match the working parfor behavior:
         % both receivers must have valid target support.

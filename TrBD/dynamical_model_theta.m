@@ -15,7 +15,7 @@ theta_true(:, 1) = normalize_energy(theta_true(:, 1), H, Eref);
 
 for k = 2:Np
     theta_true(idx, k) = s.cfg.Fphi * theta_true(idx, k-1) ...
-        + sigma_q_idx .* (randn(numel(idx), 1) + 1j*randn(numel(idx), 1)) / sqrt(2);
+        + sigma_q_idx .* randn(numel(idx), 1);
 
     theta_true(:, k) = normalize_energy(theta_true(:, k), H, Eref);
 end
@@ -24,7 +24,7 @@ end
 
 function theta = normalize_energy(theta, H, Eref)
 
-E = sum(abs(H * theta).^2);
+E = sum((H * theta).^2);
 
 if E > 0 && Eref > 0
     theta = theta * sqrt(Eref / E);
