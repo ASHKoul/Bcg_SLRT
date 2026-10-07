@@ -26,7 +26,7 @@ cfg.Nmc = 10;        % Monte Carlo repetitions
 
 % --- signal handling ---
 cfg.Fs        = Fs;        % [Hz]
-cfg.baseband  = true;
+cfg.baseband  = false;
 cfg.add_noise = true;
 cfg.add_target= true;
 cfg.target_status = "fixed";
